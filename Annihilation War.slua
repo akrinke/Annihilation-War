@@ -1,0 +1,1809 @@
+--==========================================================================
+--Annihilation War
+--GAME2D for Scrupp
+--EVERTON COSTA
+--ertocs@hotmail.com
+--© 2010-2012 COPYRIGHT 
+--==========================================================================
+
+require('game2d')
+--require('wx')
+
+--IMPOTANT VARS============================================================
+local game = game2d:init('Annihilation War', _800x600_, _FULLSCREEN_)
+local gui = game:gui()
+local mouse = game:mouse()
+local res = game:resources()
+
+local difficulty = { current = 1, names = { 'Easy', 'Medium', 'Hard' } }
+local buttonImages = { 'buttonNormal.png', 'buttonNormal.png', 'buttonClicked.png', 'buttonClicked.png'  } -- NORMAL, DISABLED, CLICKED, FOCUSED -- MANDATORY --
+local players = { p1h = _NO_, p2h = _NO_, p1t = _NO_, p2t = _NO_}
+local army = 1
+local players_number = 0
+local start = false
+local started = false
+--==========================================================================
+
+--CONSTANTS=================================================================
+local PERIODCREATION_mn = 25
+local PERIODCREATION_mx = 30
+local SOLDIERCHANGEDIR_mx = 99
+local SOLDIERTELEPORT_mx = 6
+local SOLDIERTELEPORTDISTANECE_mx = 99
+local SOLDIER_speed = 3
+local SOLDIER_animatiospeed = 0.08
+local SOLDIERRAY_creation = 9
+local SOLDIERRAY_capturation = 50
+local SOLDIERRAY_protection = 20
+local SOLDIERRAYTELEPORT_protection = 100
+local SFIRE_loaded = 20*_SECOND_
+local FIRE_loaded = _SECOND_/2
+local CAVEPOWERUP_limit = 10*_SECOND_
+local SOLDIERRAY_teleport = 300
+local SOLDIERHUMANRAY_shoot = 100
+local SOLDIERTECHYRAY_shoot = 100
+local HSHOOT_speed = 7
+local TSHOOT_speed = 7
+local CRATERMED_time = 10*_SECOND_
+local SOLDIERDISTANCESHOOT_mx = 30
+local SOLDIERDISTANCESHOOTCHANGEDIR_mx = 3
+local SOLDIERTECHYALPHA = 100
+local SOLDIERTECHYALPHASHOOT = 40
+local TECHYNS_mn = 3
+local HUMANS_mx =12
+local TECHYCHANGESTATERANDOM = 499
+local TECHYDISTANCECAVE_mn = 64
+--==========================================================================
+
+--GAME EVENTS===============================================================
+game.events =
+	{
+		onButtonMouseOver = function()
+			game:playSound('mouse.wav')
+		end,
+
+		onButtonClick = function()
+			game:playSound('click.wav')
+		end,
+
+		onMousePress = function(mouse)
+			if inform_showing then
+				infobox:exclude()
+				infotext:exclude()
+				inform_showing = false
+				help_text(inform_statusvalue)
+			end
+			if start then
+				logo:exclude()
+				gui.image = nil
+				gui.bgVisible = false
+				start = false
+				game:setPark(battle)
+				started = true
+			end
+		end,
+
+		onKeyRelease = function(key)
+			if started then
+				if obj_players.p1h then
+					local a = obj_players.p1h
+					if not a.killed and a.ok then
+						if key==_W_ or key==_S_ then
+							if a.ySpeed~=0 then a.ySpeed = 0 end
+						elseif key==_A_ or key==_D_ then
+							if a.xSpeed~=0 then a.xSpeed = 0 end
+						end
+					end
+				end
+				if obj_players.p2h then
+					local a = obj_players.p2h
+					if not a.killed and a.ok then
+						if key==_UP_ or key==_DN_ then
+							if a.ySpeed~=0 then a.ySpeed = 0 end
+						elseif key==_LEFT_ or key==_RIGHT_ then
+							if a.xSpeed~=0 then a.xSpeed = 0 end
+						end
+					end
+				end
+				if obj_players.p1t then
+					local a = obj_players.p1t
+					if not a.killed and a.ok then
+						if key==_W_ or key==_S_ then
+							if a.ySpeed~=0 then a.ySpeed = 0 end
+						elseif key==_A_ or key==_D_ then
+							if a.xSpeed~=0 then a.xSpeed = 0 end
+						end
+					end
+				end
+				if obj_players.p2t then
+					local a = obj_players.p2t
+					if not a.killed and a.ok then
+						if key==_UP_ or key==_DN_ then
+							if a.ySpeed~=0 then a.ySpeed = 0 end
+						elseif key==_LEFT_ or key==_RIGHT_ then
+							if a.xSpeed~=0 then a.xSpeed = 0 end
+						end
+					end
+				end
+			end
+			if started and key==_ESCAPE_ then
+				if not game:paused() then
+					game:pause()
+					local escapeBox = gui:includeBox()
+					escapeBox.w = 334 escapeBox.h = 334
+					escapeBox.y = game.H/2-167 escapeBox.x = game.W/2-167
+					escapeBox.image = "game.png"
+					local escapeText = gui:includeLabel()
+					escapeText.w = 195 escapeText.h = 225
+					escapeText.y = game.H/2-95 escapeText.x = game.W/2-95
+					escapeText.fgColor = _BLACK_
+					escapeText.text = "Game Paused"
+					escapeBtn1 = gui:includeButton(buttonImages)
+					escapeBtn1.text = 'Resume Game'
+					escapeBtn1.y = escapeBtn1.y - 45
+					escapeBtn1.fgColor = _BLACK_
+					escapeBtn1.onClick =	function()
+												escapeBox:exclude()
+												escapeText:exclude()
+												escapeBtn1:exclude()
+												escapeBtn2:exclude()
+												escapeBtn3:exclude()
+												escapeBtn4:exclude()
+												game:resume()
+											end
+					escapeBtn2 = gui:includeButton(buttonImages)
+					escapeBtn2.text = 'Main Menu'
+					escapeBtn2.fgColor = _BLACK_
+					escapeBtn2.onClick =	function()
+												escapeBox:exclude()
+												escapeText:exclude()
+												escapeBtn1:exclude()
+												escapeBtn2:exclude()
+												escapeBtn3:exclude()
+												escapeBtn4:exclude()
+												battle:exclude()
+												battle = nil
+												game:setPark(_NONE_)
+												show_mainmenu()
+												game:resume()
+											end
+					escapeBtn3 = gui:includeButton(buttonImages)
+					escapeBtn3.text = 'Exit Game'
+					escapeBtn3.y = escapeBtn3.y + 90
+					escapeBtn3.fgColor = _BLACK_
+					escapeBtn3.onClick =	function()
+												escapeText.text = "Are you sure?"
+												escapeBtn3.visible = _NO_
+												escapeBtn4.visible = _NO_
+												escapeBtn1.text = 'No'
+												escapeBtn1.onClick = 	function()
+																			escapeBox:exclude()
+																			escapeText:exclude()
+																			escapeBtn1:exclude()
+																			escapeBtn2:exclude()
+																			escapeBtn3:exclude()
+																			escapeBtn4:exclude()
+																			game:resume()
+																		end
+												escapeBtn2.text = 'Yes'
+												escapeBtn2.onClick =	function()
+																			game:exit()
+																		end
+											end
+					escapeBtn4 = gui:includeButton(buttonImages)
+					escapeBtn4.text = 'Set Difficulty'
+					escapeBtn4.y = escapeBtn4.y + 45
+					escapeBtn4.fgColor = _BLACK_
+					escapeBtn4.onClick =	function()
+												escapeBtn3.visible = _NO_
+												local escapeInfo = gui:includeLabel()
+												escapeInfo.w = 195 escapeInfo.h = 225
+												escapeInfo.y = game.H/2+95 escapeInfo.x = game.W/2-95
+												escapeInfo.fgColor = _BLACK_
+												if difficulty.current==1 then
+													escapeInfo.text = "Current difficulty: Easy"
+												elseif difficulty.current==2 then
+													escapeInfo.text = "Current difficulty: Medium"
+												elseif difficulty.current==3 then
+													escapeInfo.text = "Current difficulty: Hard"
+												end
+												escapeText.text = "Difficulty:"
+												escapeBtn1.text = 'Easy'
+												escapeBtn1.onClick = 	function()
+																			escapeBox:exclude()
+																			escapeText:exclude()
+																			escapeBtn1:exclude()
+																			escapeBtn2:exclude()
+																			escapeBtn3:exclude()
+																			escapeBtn4:exclude()
+																			escapeInfo:exclude()
+																			difficulty.current = 1
+																			game:resume()
+																		end
+												escapeBtn2.text = 'Medium'
+												escapeBtn2.onClick =	function()
+																			escapeBox:exclude()
+																			escapeText:exclude()
+																			escapeBtn1:exclude()
+																			escapeBtn2:exclude()
+																			escapeBtn3:exclude()
+																			escapeBtn4:exclude()
+																			escapeInfo:exclude()
+																			difficulty.current = 2
+																			game:resume()
+																		end
+												escapeBtn4.text = 'Hard'
+												escapeBtn4.onClick =	function()
+																			escapeBox:exclude()
+																			escapeText:exclude()
+																			escapeBtn1:exclude()
+																			escapeBtn2:exclude()
+																			escapeBtn3:exclude()
+																			escapeBtn4:exclude()
+																			escapeInfo:exclude()
+																			difficulty.current = 3
+																			game:resume()
+																		end
+											end
+				end
+			end
+		end,
+
+		onKeyPress = function(key)
+			if started then
+				if obj_players.p1t then
+					if not obj_players.p1t.killed and obj_players.p1t.ok then
+						if key==_K_ then
+							if obj_players.p1t.var4<0 and obj_players.p1t.var5==0 then
+								obj_players.p1t.var5 = 1
+								obj_players.p1t.var4 = SFIRE_loaded
+							elseif obj_players.p1t.var5==1 then
+								obj_players.p1t.var5 = 0
+								obj_players.p1t.var4 = SFIRE_loaded
+							end
+						end
+					end
+				end
+				if obj_players.p2t then
+					if not obj_players.p2t.killed and obj_players.p2t.ok then
+						if key==_KPMINUS_ then
+							if obj_players.p2t.var4<0 and obj_players.p2t.var5==0 then
+								obj_players.p2t.var5 = 1
+								obj_players.p2t.var4 = SFIRE_loaded
+							elseif obj_players.p2t.var5==1 then
+								obj_players.p2t.var5 = 0
+								obj_players.p2t.var4 = SFIRE_loaded
+							end
+						end
+					end
+				end
+			end
+		end,
+
+		onKey = function(key)--, onKeyPress(key), onKeyRelease(key)
+			if started then
+				if obj_players.p1h then
+					if not obj_players.p1h.killed and obj_players.p1h.ok then
+						if key==_W_ then
+							obj_players.p1h.lastkey = _UP_
+							obj_players.p1h.ySpeed = -SOLDIER_speed
+							obj_players.p1h.xSpeed = 0
+						elseif key==_S_ then
+							obj_players.p1h.lastkey = _DN_
+							obj_players.p1h.ySpeed = SOLDIER_speed
+							obj_players.p1h.xSpeed = 0
+						elseif key==_A_ then
+							obj_players.p1h.lastkey = _LEFT_
+							obj_players.p1h.xSpeed = -SOLDIER_speed
+							obj_players.p1h.ySpeed = 0
+						elseif key==_D_ then
+							obj_players.p1h.lastkey = _RIGHT_
+							obj_players.p1h.xSpeed = SOLDIER_speed
+							obj_players.p1h.ySpeed = 0
+						elseif key==_J_ and obj_players.p1h.var3<0 then
+							if obj_players.p1h.xSpeed<0 then
+								createHShoot(obj_players.p1h, _LEFT_)
+							elseif obj_players.p1h.xSpeed>0 then
+								createHShoot(obj_players.p1h, _RIGHT_)
+							elseif obj_players.p1h.ySpeed<0 then
+								createHShoot(obj_players.p1h, _UP_)
+							elseif obj_players.p1h.ySpeed<0 then
+								createHShoot(obj_players.p1h, _DN_)
+							else
+								if obj_players.p1h.lastkey then
+									local a = obj_players.p1h.lastkey
+									if a==_LEFT_ then
+										createHShoot(obj_players.p1h, _LEFT_)
+									elseif a==_RIGHT_ then
+										createHShoot(obj_players.p1h, _RIGHT_)
+									elseif a==_UP_ then
+										createHShoot(obj_players.p1h, _UP_)
+									elseif a==_DN_ then
+										createHShoot(obj_players.p1h, _DN_)
+									end
+								else
+									createHShoot(obj_players.p1h, _DN_)
+								end
+							end
+						elseif key==_K_  then
+							if obj_players.p1h.var5 then
+								if obj_players.p1h.var5.var5<0 then
+									createTeleportAnim(obj_players.p1h)
+									obj_players.p1h.xSpeed=0
+									obj_players.p1h.ySpeed=0
+									obj_players.p1h.x = obj_players.p1h.var5.x
+									obj_players.p1h.y = obj_players.p1h.var5.y
+									obj_players.p1h.var4 = SFIRE_loaded
+									obj_players.p1h.var5:kill()
+									obj_players.p1h.var5 = nil
+								end
+							elseif obj_players.p1h.var4<0 then
+								createTeleportMark(obj_players.p1h)
+								obj_players.p1h.var4 = _INFINITY_
+							end
+						end
+					end
+				end
+				if obj_players.p2h then
+					if not obj_players.p2h.killed and obj_players.p2h.ok then
+						if key==_UP_ then
+							obj_players.p2h.lastkey = _UP_
+							obj_players.p2h.ySpeed = -SOLDIER_speed
+							obj_players.p2h.xSpeed = 0
+						elseif key==_DN_ then
+							obj_players.p2h.lastkey = _DN_
+							obj_players.p2h.ySpeed = SOLDIER_speed
+							obj_players.p2h.xSpeed = 0
+						elseif key==_LEFT_ then
+							obj_players.p2h.lastkey = _LEFT_
+							obj_players.p2h.xSpeed = -SOLDIER_speed
+							obj_players.p2h.ySpeed = 0
+						elseif key==_RIGHT_ then
+							obj_players.p2h.lastkey = _RIGHT_
+							obj_players.p2h.xSpeed = SOLDIER_speed
+							obj_players.p2h.ySpeed = 0
+						elseif key==_KPMULTIPLY_ and obj_players.p2h.var3<0 then
+							if obj_players.p2h.xSpeed<0 then
+								createHShoot(obj_players.p2h, _LEFT_)
+							elseif obj_players.p2h.xSpeed>0 then
+								createHShoot(obj_players.p2h, _RIGHT_)
+							elseif obj_players.p2h.ySpeed<0 then
+								createHShoot(obj_players.p2h, _UP_)
+							elseif obj_players.p2h.ySpeed<0 then
+								createHShoot(obj_players.p2h, _DN_)
+							else
+								if obj_players.p2h.lastkey then
+									local a = obj_players.p2h.lastkey
+									if a==_LEFT_ then
+										createHShoot(obj_players.p2h, _LEFT_)
+									elseif a==_RIGHT_ then
+										createHShoot(obj_players.p2h, _RIGHT_)
+									elseif a==_UP_ then
+										createHShoot(obj_players.p2h, _UP_)
+									elseif a==_DN_ then
+										createHShoot(obj_players.p2h, _DN_)
+									end
+								else
+									createHShoot(obj_players.p2h, _DN_)
+								end
+							end
+						elseif key==_KPMINUS_ then
+							if obj_players.p2h.var5 then
+								if obj_players.p2h.var5.var5<0 then
+									createTeleportAnim(obj_players.p2h)
+									obj_players.p2h.xSpeed=0
+									obj_players.p2h.ySpeed=0
+									obj_players.p2h.x = obj_players.p2h.var5.x
+									obj_players.p2h.y = obj_players.p2h.var5.y
+									obj_players.p2h.var4 = SFIRE_loaded
+									obj_players.p2h.var5:kill()
+									obj_players.p2h.var5 = nil
+								end
+							elseif obj_players.p2h.var4<0 then
+								createTeleportMark(obj_players.p2h)
+								obj_players.p2h.var4 = _INFINITY_
+							end
+						end
+					end
+				end
+				if obj_players.p1t then
+					if not obj_players.p1t.killed and obj_players.p1t.ok then
+						if key==_W_ then
+							obj_players.p1t.lastkey = _W_
+							obj_players.p1t.ySpeed = -SOLDIER_speed
+							obj_players.p1t.xSpeed = 0
+						elseif key==_S_ then
+							obj_players.p1t.lastkey = _S_
+							obj_players.p1t.ySpeed = SOLDIER_speed
+							obj_players.p1t.xSpeed = 0
+						elseif key==_A_ then
+							obj_players.p1t.lastkey = _A_
+							obj_players.p1t.xSpeed = -SOLDIER_speed
+							obj_players.p1t.ySpeed = 0
+						elseif key==_D_ then
+							obj_players.p1t.lastkey = _D_
+							obj_players.p1t.xSpeed = SOLDIER_speed
+							obj_players.p1t.ySpeed = 0
+						elseif key==_J_ and obj_players.p1t.var3<0 then
+							if obj_players.p1t.xSpeed<0 then
+								createTShoot(obj_players.p1t, _LEFT_)
+							elseif obj_players.p1t.xSpeed>0 then
+								createTShoot(obj_players.p1t, _RIGHT_)
+							elseif obj_players.p1t.ySpeed<0 then
+								createTShoot(obj_players.p1t, _UP_)
+							elseif obj_players.p1t.ySpeed<0 then
+								createTShoot(obj_players.p1t, _DN_)
+							else
+								if obj_players.p1t.lastkey then
+									local a = obj_players.p1t.lastkey
+									if a==_A_ then
+										createTShoot(obj_players.p1t, _LEFT_)
+									elseif a==_D_ then
+										createTShoot(obj_players.p1t, _RIGHT_)
+									elseif a==_W_ then
+										createTShoot(obj_players.p1t, _UP_)
+									elseif a==_S_ then
+										createTShoot(obj_players.p1t, _DN_)
+									end
+								else
+									createTShoot(obj_players.p1t, _DN_)
+								end
+							end
+						end
+					end
+				end
+				if obj_players.p2t then
+					if not obj_players.p2t.killed and obj_players.p2t.ok then
+						if key==_UP_ then
+							obj_players.p2t.lastkey = _UP_
+							obj_players.p2t.ySpeed = -SOLDIER_speed
+							obj_players.p2t.xSpeed = 0
+						elseif key==_DN_ then
+							obj_players.p2t.lastkey = _DN_
+							obj_players.p2t.ySpeed = SOLDIER_speed
+							obj_players.p2t.xSpeed = 0
+						elseif key==_LEFT_ then
+							obj_players.p2t.lastkey = _LEFT_
+							obj_players.p2t.xSpeed = -SOLDIER_speed
+							obj_players.p2t.ySpeed = 0
+						elseif key==_RIGHT_ then
+							obj_players.p2t.lastkey = _RIGHT_
+							obj_players.p2t.xSpeed = SOLDIER_speed
+							obj_players.p2t.ySpeed = 0
+						elseif key==_KPMULTIPLY_ and obj_players.p2t.var3<0 then
+							if obj_players.p2t.xSpeed<0 then
+								createTShoot(obj_players.p2t, _LEFT_)
+							elseif obj_players.p2t.xSpeed>0 then
+								createTShoot(obj_players.p2t, _RIGHT_)
+							elseif obj_players.p2t.ySpeed<0 then
+								createTShoot(obj_players.p2t, _UP_)
+							elseif obj_players.p2t.ySpeed>0 then
+								createTShoot(obj_players.p2t, _DN_)
+							else
+								if obj_players.p2t.lastkey then
+									local a = obj_players.p2t.lastkey
+									if a==_LEFT_ then
+										createTShoot(obj_players.p2t, _LEFT_)
+									elseif a==_RIGHT_ then
+										createTShoot(obj_players.p2t, _RIGHT_)
+									elseif a==_UP_ then
+										createTShoot(obj_players.p2t, _UP_)
+									elseif a==_DN_ then
+										createTShoot(obj_players.p2t, _DN_)
+									end
+								else
+									createTShoot(obj_players.p2t, _DN_)
+								end
+							end
+						end
+					end
+				end
+			end
+		end,
+
+		onSpriteQuit = function(spr)
+
+		end,
+
+		onSpriteUpdate = function(spr)
+			if spr:isFamily(soldier) then
+				local a = battle:spriteNearest(spr, cave)
+				spr.layer = spr.y
+				spr.var3 = spr.var3-1 --canFire
+				spr.var4 = spr.var4-1 --canSecondaryFire
+				if spr.var1==1 or spr.var1==2 then
+					if (spr.xSpeed==0 and spr.ySpeed ==0) then
+						if random_integer(1,2)==1 then
+							if random_integer(1,2)==1 then
+								spr.xSpeed=SOLDIER_speed
+								spr.ySpeed=0
+							else
+								spr.xSpeed=-SOLDIER_speed
+								spr.ySpeed=0
+							end
+						else
+							if random_integer(1,2)==1 then
+								spr.ySpeed=SOLDIER_speed
+								spr.xSpeed=0
+							else
+								spr.ySpeed=-SOLDIER_speed
+								spr.xSpeed=0
+							end
+						end
+					end
+					if random_integer(0,SOLDIERCHANGEDIR_mx)==0 then
+						if spr.xSpeed~=0 then
+							if random_integer(1,2)==1 then
+								spr.ySpeed=SOLDIER_speed
+								spr.xSpeed=0
+							else
+								spr.ySpeed=-SOLDIER_speed
+								spr.xSpeed=0
+							end
+						elseif spr.ySpeed~=0 then
+							if random_integer(1,2)==1 then
+								spr.xSpeed=SOLDIER_speed
+								spr.ySpeed=0
+							else
+								spr.xSpeed=-SOLDIER_speed
+								spr.ySpeed=0
+							end
+						end
+					end
+					if a and spr.var1==2 then
+						if battle:spriteDistance(spr, a)<TECHYDISTANCECAVE_mn then
+							if spr.var5==1 then
+								spr.var5=0
+							end
+						end
+					end
+					if a then
+						if battle:spriteDistance(spr, a)<=SOLDIERRAY_capturation then
+							if spr.y>a.y+5 and (spr.x>a.x-32 and spr.x<a.x+32)then
+								if spr.var1==1 or spr.var1==3 or spr.var1==5 then
+									if a.var1~=1 then
+										if spr.x~=a.x and spr.x~=a.x-1 and spr.x~=a.x-2 and spr.x~=a.x+1 and spr.x~=a.x+2 then
+											if spr.x<a.x-2 then
+												spr.xSpeed = SOLDIER_speed
+											elseif spr.x>a.x+2 then
+												spr.xSpeed = -SOLDIER_speed
+											end
+											spr.ySpeed = 0
+										else
+											spr.xSpeed = 0
+											spr.ySpeed = -SOLDIER_speed
+										end
+									end
+								elseif spr.var1==2 or spr.var1==4 or spr.var1==6 then
+									if a.var1~=2 then
+										if spr.x~=a.x and spr.x~=a.x-1 and spr.x~=a.x-2 and spr.x~=a.x+1 and spr.x~=a.x+2 then
+											if spr.x<a.x-2 then
+												spr.xSpeed = SOLDIER_speed
+											elseif spr.x>a.x+2 then
+												spr.xSpeed = -SOLDIER_speed
+											end
+											spr.ySpeed = 0
+										else
+											spr.xSpeed = 0
+											spr.ySpeed = -SOLDIER_speed
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+					spr.imageSpeed = SOLDIER_animatiospeed
+					if spr.xSpeed~=0 then
+						if spr.xSpeed>0 then
+							if spr.var1==1 or spr.var1==3 or spr.var1==5 then
+								spr.animation = 'humanRt'
+							elseif spr.var1==2 or spr.var1==4 or spr.var1==6 then
+								spr.animation = 'techyRt'
+							end
+						elseif spr.xSpeed<0 then
+							if spr.var1==1 or spr.var1==3 or spr.var1==5 then
+								spr.animation = 'humanLt'
+							elseif spr.var1==2 or spr.var1==4 or spr.var1==6 then
+								spr.animation = 'techyLt'
+							end
+						end
+					elseif spr.ySpeed~=0 then
+						if spr.ySpeed>0 then
+							if spr.var1==1 or spr.var1==3 or spr.var1==5 then
+								spr.animation = 'humanDn'
+							elseif spr.var1==2 or spr.var1==4 or spr.var1==6 then
+								spr.animation = 'techyDn'
+							end
+						elseif spr.ySpeed<0 then
+							if spr.var1==1 or spr.var1==3 or spr.var1==5 then
+								spr.animation = 'humanUp'
+							elseif spr.var1==2 or spr.var1==4 or spr.var1==6 then
+								spr.animation = 'techyUp'
+							end
+						end
+					else
+						spr.imageSpeed = 0
+						spr.imageIndex = 0
+					end
+					if spr.var1==1 then
+						if battle:spriteDistance(spr, a)<=SOLDIERRAY_protection then
+							if spr.var4<0 then
+								createTeleportMark(spr)
+								spr.var4 = _INFINITY_
+							end
+						end
+					end
+				if spr.var1==1 or spr.var1==2 then
+					if spr.var1 == 1 then
+						if spr.var5 then
+							if spr.var5.var5<0 then
+								if battle:spriteDistance(spr, spr.var5)<SOLDIERRAY_teleport and random_integer(0, SOLDIERTELEPORTDISTANECE_mx)==0 then
+									if a then
+										if battle:spriteDistance(spr, a)>SOLDIERRAYTELEPORT_protection then
+											createTeleportAnim(spr)
+											spr.xSpeed=0
+											spr.ySpeed=0
+											spr.x = spr.var5.x
+											spr.y = spr.var5.y
+											spr.var4 = SFIRE_loaded
+											spr.var5:kill()
+											spr.var5 = nil
+										end
+									else
+										createTeleportAnim(spr)
+										spr.xSpeed=0
+										spr.ySpeed=0
+										spr.x = spr.var5.x
+										spr.y = spr.var5.y
+										spr.var4 = SFIRE_loaded
+										spr.var5:kill()
+										spr.var5 = nil
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end,
+
+		onGameUpdateEnd = function()
+
+		end,
+
+		onParkUpdate = function(prk)
+		end,
+
+		onSpriteCollide = function(spr, spr2)
+			if spr:isFamily(soldier) and not spr2:isFamily(stair) and not spr2:isFamily(teleportMark) and not spr2:isFamily(teleportAnim) and not spr2:isFamily(cratermed) and not spr2:isFamily(explosion) and not spr2:isFamily(alert) then
+				if spr.var1==1 or spr.var1==2 then
+					if spr.xSpeed~=0 then
+						spr.xSpeed = 0
+						if random_integer(1,2)==1 then
+							spr.ySpeed = SOLDIER_speed
+						else
+							spr.ySpeed = -SOLDIER_speed
+						end
+					elseif spr.ySpeed~=0 then
+						spr.ySpeed = 0
+						if random_integer(1,2)==1 then
+							spr.xSpeed = SOLDIER_speed
+						else
+							spr.xSpeed = -SOLDIER_speed
+						end
+					end
+				end
+			end
+			if spr:isFamily(soldier) then
+				local a = battle:spriteNearest(spr, cave)
+				if a then
+					if battle:spriteDistance(spr, a)<spr.bH+8 then
+						if spr.var1==1 or spr.var1==3 or spr.var1==5 then
+							if a.var1~=1 then
+								if a.var3<0 or a.var1==0 then
+									spr.var2 = spr.var2+1
+									createSpire(spr)
+									a.var3 = CAVEPOWERUP_limit
+								end
+								a.var1=1
+								a.animation = 'hums'
+								a.var2 = random_integer(PERIODCREATION_mn, PERIODCREATION_mx)*_SECOND_
+							end
+						elseif spr.var1==2 or spr.var1==4 or spr.var1==6 then
+							if a.var1~=2 then
+								if a.var3<0 or a.var1==0 then
+									spr.var2 = spr.var2+1
+									createSpire(spr)
+									a.var3 = CAVEPOWERUP_limit
+								end
+								if spr.var5==1 then
+									spr.var5=0
+									spr.var4 = SFIRE_loaded
+								end
+								a.var1=2
+								a.animation = 'tecs'
+								a.var2 = random_integer(PERIODCREATION_mn, PERIODCREATION_mx)*_SECOND_
+							end
+						end
+						a.imageSpeed = 0.1
+					end
+				end
+			end
+			local sprTemp = spr
+			if spr:isFamily(hshoot) and spr2:isFamily(soldier) then
+				spr = spr2
+				spr2 = sprTemp
+			end
+			if spr:isFamily(soldier) and spr2:isFamily(hshoot) then
+				if spr.var1==2 or spr.var1==4 or spr.var1==6 then
+					if spr.var5==0 then
+						spr.var2 = spr.var2 - 1
+						createNegSpire(spr)
+						if spr.var2<=0 then
+							battle:dropSprite(explosion, spr.x, spr.y)
+							spr:kill()
+							techyns_number = techyns_number-1
+							createSpire(spr2.var1)
+							spr2.var1.var2 = spr2.var1.var2 + 1
+						end
+						spr2:kill()
+					end
+				end
+			elseif spr:isFamily(hshoot) and spr2:isFamily(battle) then
+				spr:kill()
+			end
+			if spr:isFamily(tshoot) and spr2:isFamily(soldier) then
+				spr = spr2
+				spr2 = sprTemp
+			end
+			if spr:isFamily(soldier) and spr2:isFamily(tshoot) then
+				if spr.var1==1 or spr.var1==3 or spr.var1==5 then
+					spr.var2 = spr.var2 - 1
+					createNegSpire(spr)
+					if spr.var2<=0 then
+						spr:kill()
+						createSpire(spr2.var1)
+						humans_number = humans_number- 1
+						spr2.var1.var2 = spr2.var1.var2 + 1
+						game:playSound('laser_hit.wav')
+					end
+					spr2:kill()
+				end
+			elseif spr:isFamily(tshoot) and spr2:isFamily(battle) then
+				spr:kill()
+			end
+			sprTemp = nil
+		end
+
+	}
+--==========================================================================
+
+--RESOURCES LOADING=========================================================
+res:load(	{	'images', 'sounds', 'game2d/logo_290x85.png', 'images/game'	}	)
+--==========================================================================
+
+--MENU AND OUTPUT FUNCTIONS=================================================
+inform_showing = false
+inform_statusvalue = ''
+function inform(t)
+	inform_statusvalue = help_text()
+	help_text('Click to Continue')
+	inform_showing = true
+	infobox = gui:includeBox()
+	infobox.w = 200 infobox.h = 230
+	infobox.y = game.H/2-100 infobox.x = game.W/2-100
+	infobox.bgColor = { 128, 128, 128, 180 }
+	infobox.borderColor = _BLACK_
+	infotext = gui:includeLabel()
+	infotext.w = 195 infotext.h = 225
+	infotext.y = game.H/2-95 infotext.x = game.W/2-95
+	infotext.fgColor = _WHITE_
+	infotext.text = t
+end
+helptext = gui:includeLabel()
+helptext.visible = true
+helptext.w = game.W
+helptext.h = 15
+helptext.fgColor = _BLACK_
+helptext.y = game.H-helptext.h
+helptext.x = 0
+helptext.text = ''
+function help_text(t)
+	if t~=nil then
+		helptext.text = t
+	else
+		return helptext.text
+	end
+end
+function show_mainmenu()
+	gui.image = 'menu.png'
+	gui.defaultFgColor = _BLACK_
+
+	logo = gui:includeBox()
+	logo.image = 'logo.png'
+	logo.w = 167 logo.h = 34
+	logo.x = game.W/2-logo.w/2
+	logo.y = 160
+
+	help_text('Select a difficulty and click on Start')
+
+	local function unload_gui()
+		btn1:exclude()
+		btn2:exclude()
+		btn3:exclude()
+		btn4:exclude()
+		logo:exclude()
+		gui.defaultFgColor = _WHITE_
+		help_text('Loading...')
+		res:load('images/game')
+		help_text('')
+		load_park()
+	end
+
+	btn1 = gui:includeButton(buttonImages)
+	btn1.text = 'Start'
+	btn1.y = btn1.y - 45
+	btn1.onClick =	function()
+						btn1.text = 'One player'
+						btn1.onClick =	function()
+											btn3.visible = false
+											btn1.text = 'Humans'
+											btn1.onClick =	function()
+												players = { p1h = _YES_, p2h = _NO_, p1t = _NO_, p2t = _NO_}
+												unload_gui()
+											end
+											btn2.text = 'Techyns'
+											btn2.onClick =	function()
+												players = { p1h = _NO_, p2h = _NO_, p1t = _YES_, p2t = _NO_}
+												unload_gui()
+											end
+											btn4.text = 'Cancel'
+											btn4.onClick = 	function()
+												btn1:exclude()
+												btn2:exclude()
+												btn3:exclude()
+												btn4:exclude()
+												show_mainmenu()
+											end
+											help_text('Select your Army')
+										end
+						btn2.text = 'Two players'
+						btn2.onClick =	function()
+											btn1.text = 'P1 and P2 vs Techyns'
+											btn1.onClick =	function()
+												players = { p1h = _YES_, p2h = _YES_, p1t = _NO_, p2t = _NO_}
+												unload_gui()
+											end
+											btn2.text = 'Humans vs P1 and P2'
+											btn2.onClick =	function()
+												players = { p1h = _NO_, p2h = _NO_, p1t = _YES_, p2t = _YES_}
+												unload_gui()
+											end
+											btn3.visible = true
+											btn3.text = 'P1 vs P2'
+											btn3.onClick =	function()
+												players = { p1h = _YES_, p2h = _NO_, p1t = _NO_, p2t = _YES_}
+												unload_gui()
+											end
+											btn4.text = 'Cancel'
+											btn4.onClick = 	function()
+												btn1:exclude()
+												btn2:exclude()
+												btn3:exclude()
+												btn4:exclude()
+												show_mainmenu()
+											end
+											help_text('Select the Players')
+										end
+						btn3.visible = true
+						btn3.text = 'Observer'
+						btn3.onClick = 	function()
+											players = { p1h = _NO_, p2h = _NO_, p1t = _NO_, p2t = _NO_}
+											unload_gui()
+										end
+						btn4.text = 'Back'
+						btn4.onClick = 	function()
+											btn1:exclude()
+											btn2:exclude()
+											btn3:exclude()
+											btn4:exclude()
+											show_mainmenu()
+										end
+						help_text('Select players number')
+					end
+
+	btn2 = gui:includeButton(buttonImages)
+	btn2.text = difficulty.names[difficulty.current]
+	btn2.onClick =	function()
+						difficulty.current = difficulty.current + 1
+						if difficulty.current>#difficulty.names then
+							difficulty.current = 1
+						end
+						btn2.text = difficulty.names[difficulty.current]
+					end
+	btn3 = gui:includeButton(buttonImages)
+	btn3.text = 'About'
+	btn3.y = btn3.y + 45
+	btn3.onClick =	function()
+						inform('GAME2D for scrupp\nAuthor: Everton Costa\nertocs@hotmail.com\n\nAnnihilation War\nAuthor: Everton Costa\n\n© COPYRIGHT')
+					end
+
+	btn4 = gui:includeButton(buttonImages)
+	btn4.text = 'Exit'
+	btn4.y = btn4.y + 90
+	btn4.onClick =	function()
+						game:exit()
+					end
+end
+gui.bgColor = _WHITE_
+game2d_logo = gui:includeBox()
+game2d_logo.image = 'logo_290x85.png'
+game2d_logo.w = 290
+game2d_logo.h = 85
+game2d_logo.x = (game.W/2)-(game2d_logo.w/2)
+game2d_logo.y = (game.H/2)-(game2d_logo.h/2)
+timer = game:includeTimer()
+timer.delay = 2*_SECOND_
+timer.onTick =	function()
+					timer:stop()
+					timer:exclude()
+					game2d_logo:exclude()
+					game:playSound('back.ogg', _LOOP_):setVolume(50)
+					show_mainmenu()
+				end
+timer:start()
+--==========================================================================
+
+--CREATE SOLDIERS===========================================================
+soldier = game:includeSprite('army.png', {16, 24})
+	--var1:team -> 1 team1, 2 team2, 3 team1: player1, 4 team1: player2, 5 team2: player1, 6 team2: player2
+	--var2:life -> 1.0,1.9,2.0,2.9
+	--var3:canFire -> normal shoot
+	--var4:canSfire -> humans:teleport, techyns:invisible
+	--var5:stat
+soldier.animations = 	{	humanDn = {15, 16, 17, 16},
+							humanUp = {21, 22, 23, 22},
+							humanLt = { 9, 10, 11, 10},
+							humanRt = { 3,  4,  5,  4},
+							techyDn = {12, 13, 14, 13},
+							techyUp = {18, 19, 20, 19},
+							techyLt = { 6,  7,  8,  7},
+							techyRt = { 0,  1,  2,  1},
+						}
+soldier.var2 = 1.0
+soldier.var3 = FIRE_loaded
+soldier.var4 = SFIRE_loaded
+soldier.solid = _YES_
+soldier.visible = _NO_
+soldier.w = 16
+soldier.h = 24
+soldier.cX = 8
+soldier.cY = 21
+soldier.bX = -4
+soldier.bY = -2
+soldier.bW = 8
+soldier.bH = 4
+soldier.xSpeed = 0
+soldier.ySpeed = 0
+soldier.onDie = function(spr)
+					createCratermed(spr)
+				end
+soldier.onUpdate =	function(spr)
+						if spr.var3==FIRE_loaded-2 then
+							spr.visible = _YES_
+							if spr.var1>2 then
+								local t = game:includeTimer()
+								if t then
+									t.delay = (_SECOND_/4)*2
+									t.var1 = spr
+									t.onTick = function()
+												t:stop()
+												t.var1.ySpeed = 0
+												t.var1.ok = _YES_
+												t:exclude()
+											end
+									t:start()
+								end
+							end
+						end
+						if (spr.var1==2 or spr.var1==4 or spr.var1==6) and spr.var5==1 then
+							spr.alpha = SOLDIERTECHYALPHA
+							spr.var4 = SFIRE_loaded
+						elseif (spr.var1==2 or spr.var1==4 or spr.var1==6) and spr.var5==0 then
+							spr.alpha = _OPAQUE_
+						end
+						if spr.var1==1 then
+							local h = battle:spriteNearest(spr, tshoot)
+							if h then
+								if battle:spriteDistance(spr, h)<=SOLDIERDISTANCESHOOT_mx and random_integer(1,SOLDIERDISTANCESHOOTCHANGEDIR_mx)==1 then
+									if spr.xSpeed~=0 then
+										spr.xSpeed = 0
+										if random_integer(1,2)==1 then
+											spr.ySpeed = SOLDIER_speed
+										else
+											spr.ySpeed = -SOLDIER_speed
+										end
+									elseif spr.ySpeed~=0 then
+										spr.ySpeed = 0
+										if random_integer(1,2)==1 then
+											spr.xSpeed = SOLDIER_speed
+										else
+											spr.xSpeed = -SOLDIER_speed
+										end
+									end
+								elseif spr.var2 == 1 and spr.var5 then
+									if spr.var5.var5<0 then
+										createTeleportAnim(spr)
+										spr.xSpeed=0
+										spr.ySpeed=0
+										spr.x = spr.var5.x
+										spr.y = spr.var5.y
+										spr.var4 = SFIRE_loaded
+										spr.var5:kill()
+										spr.var5 = nil
+									end
+								end
+							end
+							local a = battle:spriteNearest(spr, soldier)
+							if a and spr.var3<0 then
+								if (a.var1==2 or a.var1==4 or a.var1==6) and battle:spriteDistance(spr, a)<=SOLDIERHUMANRAY_shoot then
+									if a.x>=spr.x-4 and a.x<=spr.x+4 then
+										if a.y<=spr.y then
+											spr.xSpeed = 0
+											spr.ySpeed = -SOLDIER_speed
+											createHShoot(spr, _UP_)
+										else
+											spr.xSpeed = 0
+											spr.ySpeed = SOLDIER_speed
+											createHShoot(spr, _DN_)
+										end
+									elseif a.y>=spr.y-4 and a.y<=spr.y+4 then
+										if a.x<=spr.x then
+											spr.xSpeed = -SOLDIER_speed
+											spr.ySpeed = 0
+											createHShoot(spr, _LEFT_)
+										else
+											spr.xSpeed = SOLDIER_speed
+											spr.ySpeed = 0
+											createHShoot(spr, _RIGHT_)
+										end
+									elseif random_integer(0, 19)==0 then
+										if spr.xSpeed<0 then
+											createHShoot(spr, _LEFT_)
+										elseif spr.xSpeed>0 then
+											createHShoot(spr, _RIGHT_)
+										elseif spr.ySpeed>0 then
+											createHShoot(spr, _DN_)
+										elseif spr.ySpeed<0 then
+											createHShoot(spr, _UP_)
+										end
+									end
+								end
+							end
+						elseif spr.var1==2 then
+							local h = battle:spriteNearest(spr, hshoot)
+							if h then
+								if battle:spriteDistance(spr, h)<=SOLDIERDISTANCESHOOT_mx and random_integer(1,SOLDIERDISTANCESHOOTCHANGEDIR_mx)==1 then
+									if spr.xSpeed~=0 then
+										spr.xSpeed = 0
+										if random_integer(1,2)==1 then
+											spr.ySpeed = SOLDIER_speed
+										else
+											spr.ySpeed = -SOLDIER_speed
+										end
+									elseif spr.ySpeed~=0 then
+										spr.ySpeed = 0
+										if random_integer(1,2)==1 then
+											spr.xSpeed = SOLDIER_speed
+										else
+											spr.xSpeed = -SOLDIER_speed
+										end
+									end
+									if spr.var4<0 then
+										spr.var5 = 1
+										spr.var4 = SFIRE_loaded
+									end
+								end
+							end
+							local a = battle:spriteNearest(spr, soldier)
+							if a and spr.var3<0 then
+								if (a.var1==1 or a.var1==3 or a.var1==5) and battle:spriteDistance(spr, a)<=SOLDIERTECHYRAY_shoot then
+									if a.x>=spr.x-4 and a.x<=spr.x+4 then
+										if a.y<=spr.y then
+											spr.xSpeed = 0
+											spr.ySpeed = -SOLDIER_speed
+											createTShoot(spr, _UP_)
+										else
+											spr.xSpeed = 0
+											spr.ySpeed = SOLDIER_speed
+											createTShoot(spr, _DN_)
+										end
+									elseif a.y>=spr.y-4 and a.y<=spr.y+4 then
+										if a.x<=spr.x then
+											spr.xSpeed = -SOLDIER_speed
+											spr.ySpeed = 0
+											createTShoot(spr, _LEFT_)
+										else
+											spr.xSpeed = 0
+											spr.ySpeed = -SOLDIER_speed
+											createTShoot(spr, _RIGHT_)
+										end
+									elseif random_integer(0, 19)==0 then
+										if spr.xSpeed<0 then
+											createTShoot(spr, _LEFT_)
+										elseif spr.xSpeed>0 then
+											createTShoot(spr, _RIGHT_)
+										elseif spr.ySpeed>0 then
+											createTShoot(spr, _DN_)
+										elseif spr.ySpeed<0 then
+											createTShoot(spr, _UP_)
+										end
+									end
+								end
+							end
+							if techyns_number<=TECHYNS_mn or humans_number>=HUMANS_mx or random_integer(0,TECHYCHANGESTATERANDOM)==0 then
+								if spr.var4<0 then
+									spr.var5 = 1
+									spr.var4 = SFIRE_loaded
+								end
+							end
+						end
+					end
+function createSoldier(x, y, isPlayerWhat, sender)
+	sender = sender or nilSender
+	if isPlayerWhat==1 or isPlayerWhat==3 or isPlayerWhat==5 then
+		if humans_number>=humans_number_mx then return end
+	elseif isPlayerWhat==2 or isPlayerWhat==4 or isPlayerWhat==6 then
+		if techyns_number>=techyns_number_mx then return end
+	end
+	local a = battle:spriteNearest(sender, soldier)
+	if a then
+		if battle:spriteDistance(sender, a)>SOLDIERRAY_creation then
+			if players.p1h==_YES_ then
+				if obj_players.p1h then
+					if obj_players.p1h.killed then
+						if isPlayerWhat==1 then
+							obj_players.p1h = battle:dropSprite(soldier,x,y)
+							obj_players.p1h.var1 = 3
+							obj_players.p1h.ySpeed = SOLDIER_speed
+							createSpire(obj_players.p1h)
+							battle:dropSprite(alert).var1 = obj_players.p1h
+							humans_number = humans_number+1
+							return
+						end
+					end
+				else
+					if isPlayerWhat==1 then
+						obj_players.p1h = battle:dropSprite(soldier,x,y)
+						obj_players.p1h.var1 = 3
+						obj_players.p1h.ySpeed = SOLDIER_speed
+						createSpire(obj_players.p1h)
+						battle:dropSprite(alert).var1 = obj_players.p1h
+						humans_number = humans_number+1
+						return
+					end
+				end
+			end
+			if players.p2h==_YES_ then
+				if obj_players.p2h then
+					if obj_players.p2h.killed then
+						if isPlayerWhat==1 then
+							obj_players.p2h = battle:dropSprite(soldier,x,y)
+							obj_players.p2h.var1 = 5
+							obj_players.p2h.ySpeed = SOLDIER_speed
+							createSpire(obj_players.p2h)
+							battle:dropSprite(alert).var1 = obj_players.p2h
+							humans_number = humans_number+1
+							return
+						end
+					end
+				else
+					if isPlayerWhat==1 then
+						obj_players.p2h = battle:dropSprite(soldier,x,y)
+						obj_players.p2h.var1 = 5
+						obj_players.p2h.ySpeed = SOLDIER_speed
+						createSpire(obj_players.p2h)
+						battle:dropSprite(alert).var1 = obj_players.p2h
+						humans_number = humans_number+1
+						return
+					end
+				end
+			end
+			if players.p1t==_YES_ then
+				if obj_players.p1t then
+					if obj_players.p1t.killed then
+						if isPlayerWhat==2 then
+							obj_players.p1t = battle:dropSprite(soldier,x,y)
+							obj_players.p1t.var1 = 4
+							obj_players.p1t.ySpeed = SOLDIER_speed
+							createSpire(obj_players.p1t)
+							battle:dropSprite(alert).var1 = obj_players.p1t
+							obj_players.p1t.var5 =0
+							techyns_number = techyns_number +1
+							return
+						end
+					end
+				else
+					if isPlayerWhat==2 then
+						obj_players.p1t = battle:dropSprite(soldier,x,y)
+						obj_players.p1t.var1 = 4
+						obj_players.p1t.ySpeed = SOLDIER_speed
+						createSpire(obj_players.p1t)
+						battle:dropSprite(alert).var1 = obj_players.p1t
+						obj_players.p1t.var5 =0
+						techyns_number = techyns_number +1
+						return
+					end
+				end
+			end
+			if players.p2t==_YES_ then
+				if obj_players.p2t then
+					if obj_players.p2t.killed then
+						if isPlayerWhat==2 then
+							obj_players.p2t = battle:dropSprite(soldier,x,y)
+							obj_players.p2t.var1 = 6
+							obj_players.p2t.ySpeed = SOLDIER_speed
+							createSpire(obj_players.p2t)
+							battle:dropSprite(alert).var1 = obj_players.p2t
+							obj_players.p2t.var5 =0
+							techyns_number = techyns_number +1
+							return
+						end
+					end
+				else
+					if isPlayerWhat==2 then
+						obj_players.p2t = battle:dropSprite(soldier,x,y)
+						obj_players.p2t.var1 = 6
+						obj_players.p2t.ySpeed = SOLDIER_speed
+						createSpire(obj_players.p2t)
+						battle:dropSprite(alert).var1 = obj_players.p2t
+						obj_players.p2t.var5 =0
+						techyns_number = techyns_number +1
+						return
+					end
+				end
+			end
+			local n = battle:dropSprite(soldier,x,y)
+			n.var1 = isPlayerWhat
+			n.ySpeed = SOLDIER_speed
+			createSpire(n)
+			if isPlayerWhat==2 or isPlayerWhat==4 or isPlayerWhat==6 then
+				n.var5 =0
+				techyns_number = techyns_number +1
+			elseif isPlayerWhat==1 or isPlayerWhat==3 or isPlayerWhat==5 then
+				humans_number = humans_number +1
+			end
+		end
+	else
+		if players.p1h==_YES_ then
+			if obj_players.p1h then
+				if obj_players.p1h.killed then
+					if isPlayerWhat==1 then
+						obj_players.p1h = battle:dropSprite(soldier,x,y)
+						obj_players.p1h.var1 = 3
+						obj_players.p1h.ySpeed = SOLDIER_speed
+						createSpire(obj_players.p1h)
+						battle:dropSprite(alert).var1 = obj_players.p1h
+						humans_number = humans_number+1
+						return
+					end
+				end
+			else
+				if isPlayerWhat==1 then
+					obj_players.p1h = battle:dropSprite(soldier,x,y)
+					obj_players.p1h.var1 = 3
+					obj_players.p1h.ySpeed = SOLDIER_speed
+					createSpire(obj_players.p1h)
+					battle:dropSprite(alert).var1 = obj_players.p1h
+					humans_number = humans_number+1
+					return
+				end
+			end
+		end
+		if players.p2h==_YES_ then
+			if obj_players.p2h then
+				if obj_players.p2h.killed then
+					if isPlayerWhat==1 then
+						obj_players.p2h = battle:dropSprite(soldier,x,y)
+						obj_players.p2h.var1 = 5
+						obj_players.p2h.ySpeed = SOLDIER_speed
+						createSpire(obj_players.p2h)
+						battle:dropSprite(alert).var1 = obj_players.p2h
+						humans_number = humans_number+1
+						return
+					end
+				end
+			else
+				if isPlayerWhat==1 then
+					obj_players.p2h = battle:dropSprite(soldier,x,y)
+					obj_players.p2h.var1 = 5
+					obj_players.p2h.ySpeed = SOLDIER_speed
+					createSpire(obj_players.p2h)
+					battle:dropSprite(alert).var1 = obj_players.p2h
+					humans_number = humans_number+1
+					return
+				end
+			end
+		end
+		if players.p1t==_YES_ then
+			if obj_players.p1t then
+				if obj_players.p1t.killed then
+					if isPlayerWhat==2 then
+						obj_players.p1t = battle:dropSprite(soldier,x,y)
+						obj_players.p1t.var1 = 4
+						obj_players.p1t.ySpeed = SOLDIER_speed
+						createSpire(obj_players.p1t)
+						battle:dropSprite(alert).var1 = obj_players.p1t
+						obj_players.p1t.var5 =0
+						techyns_number = techyns_number +1
+						return
+					end
+				end
+			else
+				if isPlayerWhat==2 then
+					obj_players.p1t = battle:dropSprite(soldier,x,y)
+					obj_players.p1t.var1 = 4
+					obj_players.p1t.ySpeed = SOLDIER_speed
+					createSpire(obj_players.p1t)
+					battle:dropSprite(alert).var1 = obj_players.p1t
+					obj_players.p1t.var5 =0
+					techyns_number = techyns_number +1
+					return
+				end
+			end
+		end
+		if players.p2t==_YES_ then
+			if obj_players.p2t then
+				if obj_players.p2t.killed then
+					if isPlayerWhat==2 then
+						obj_players.p2t = battle:dropSprite(soldier,x,y)
+						obj_players.p2t.var1 = 6
+						obj_players.p2t.ySpeed = SOLDIER_speed
+						createSpire(obj_players.p2t)
+						battle:dropSprite(alert).var1 = obj_players.p2t
+						obj_players.p2t.var5 =0
+						techyns_number = techyns_number +1
+						return
+					end
+				end
+			else
+				if isPlayerWhat==2 then
+					obj_players.p2t = battle:dropSprite(soldier,x,y)
+					obj_players.p2t.var1 = 6
+					obj_players.p2t.ySpeed = SOLDIER_speed
+					createSpire(obj_players.p2t)
+					battle:dropSprite(alert).var1 = obj_players.p2t
+					obj_players.p2t.var5 =0
+					techyns_number = techyns_number +1
+					return
+				end
+			end
+		end
+		local n = battle:dropSprite(soldier,x,y)
+		n.var1 = isPlayerWhat
+		n.ySpeed = SOLDIER_speed
+		createSpire(n)
+		if isPlayerWhat==2 or isPlayerWhat==4 or isPlayerWhat==6 then
+			n.var5 =0
+			techyns_number = techyns_number +1
+		elseif isPlayerWhat==1 or isPlayerWhat==3 or isPlayerWhat==5 then
+			humans_number = humans_number +1
+		end
+	end
+end
+--==========================================================================
+
+
+--PARKS FUNCTIONS AND DECLARATIONS==========================================
+function load_park()
+
+	techyns_number = 0
+	humans_number = 0
+	techyns_number_mx = 0
+	humans_number_mx = 0
+
+	obj_players = {p1h = nil, p2h = nil, p1t = nil, p2t = nil }
+
+	if difficulty.current == 1 then
+		techyns_number_mx = 5
+		humans_number_mx = 5
+	elseif difficulty.current == 2 then
+		techyns_number_mx = 8
+		humans_number_mx = 8
+	elseif difficulty.current == 3 then
+		techyns_number_mx = 12
+		humans_number_mx = 12
+	end
+
+	players_number = 0
+	if players.p1h then players_number = players_number+1 end
+	if players.p2h then players_number = players_number+1 end
+	if players.p1t then players_number = players_number+1 end
+	if players.p2t then players_number = players_number+1 end
+
+	--PARK======================================================================
+	battle = game:includePark('back.png',{16, 16})
+	camera = battle:camera()
+	battle.solid = _YES_
+	battle.backImage = 'grass.png'
+	battle.backType = _TILED_
+	local function sort_park()
+		require('maps.config')
+		local k = tostring(random_integer(1, config_maps))
+		n = nil
+		return tostring(k)
+	end
+	s1 = battle:includeSquare()
+	s1.tileMap = {{1,2,3},{8,7,10},{15,16,17}}
+	s2 = battle:includeSquare()
+	s2.tileMap = {{22,23,24},{29,30,31}}
+	require('maps.'..sort_park())
+	local m = map
+	battle.tileMap = m.tilemap
+	nilSender = game:includeSprite('army.png')
+	nilSender = battle:dropSprite(nilSender,_INFINITY_,_INFINITY_)
+	--==========================================================================
+
+	--STAIR=====================================================================
+	stair = game:includeSprite('back.png', {16, 32})
+	stair.imageIndex = 12
+	stair.layer = 1
+	stair.solid = _NO_
+	for i=1, #m.stairs do
+		battle:dropSprite(stair, (m.stairs[i][1]*16)-16, (m.stairs[i][2]*16)-16)
+	end
+	--==========================================================================
+
+	--CAVERNS===================================================================
+	cave = game:includeSprite('caves.png', {16, 32})
+		--var1: team
+		--var2: creation time
+		--var3: powerup limit
+	cave.animations = { hums = {1, 2, 3, 2}, tecs = {4, 5, 6, 5}}
+	cave.layer = 1
+	cave.solid = _YES_
+	cave.w = 16
+	cave.h = 32
+	cave.cY = cave.h
+	cave.cX = cave.w/2
+	cave.bX = -cave.cX
+	cave.bY = -cave.cY
+	cave.var3 = CAVEPOWERUP_limit
+	cave.onUpdate =	function(spr)
+						if spr.var1==1 then
+							spr.var2 = spr.var2 - 1
+							if spr.var2<0 then
+								createSoldier(spr.x,spr.y+soldier.bH,1,spr)
+								spr.var2 = random_integer(PERIODCREATION_mn, PERIODCREATION_mx)*_SECOND_
+							end
+						elseif spr.var1==2 then
+							spr.var2 = spr.var2 - 1
+							if spr.var2<0 then
+								createSoldier(spr.x,spr.y+soldier.bH,2,spr)
+								spr.var2 = random_integer(PERIODCREATION_mn, PERIODCREATION_mx)*_SECOND_
+							end
+						end
+						spr.var3=spr.var3-1
+					end
+	for i=1, #m.caves do
+		if m.caves[i][3]==1 then
+			local c = battle:dropSprite(cave, (m.caves[i][1]*16)-16+cave.cX, (m.caves[i][2]*16)-16+cave.cY)
+			c.animation='hums'
+			c.var1 = 1
+			c.var2 = random_integer(PERIODCREATION_mn, PERIODCREATION_mx)*_SECOND_
+			c.imageSpeed = 0.1
+		elseif m.caves[i][3]==2 then
+			local c = battle:dropSprite(cave, (m.caves[i][1]*16)-16+cave.cX, (m.caves[i][2]*16)-16+cave.cY)
+			c.animation='tecs'
+			c.var1 = 2
+			c.var2 = random_integer(PERIODCREATION_mn, PERIODCREATION_mx)*_SECOND_
+			c.imageSpeed = 0.1
+		else
+			battle:dropSprite(cave, (m.caves[i][1]*16)-16+cave.cX, (m.caves[i][2]*16)-16+cave.cY).var1=0
+		end
+	end
+	--==========================================================================
+
+	--SPIRES====================================================================
+	spire = game:includeSprite('spire.png')
+		--var1: life counter
+		--var2: sender
+	spire.layer = game.H
+	spire.var1 = 36
+	spire.cX = 3
+	spire.onUpdate = function(s)
+						s.var1 = s.var1 - 3
+						s.y = s.y-3
+						s.x= s.var2.x
+						s.alpha = s.alpha-20
+						if s.var1<1 then
+							s:kill()
+						end
+					end
+	negSpire = game:includeSprite('negSpire.png')
+		--var1: life counter
+		--var2: sender
+	negSpire.layer = game.H
+	negSpire.var1 = 36
+	negSpire.cX = 3
+	negSpire.onUpdate = function(s)
+						s.var1 = s.var1 - 3
+						s.y = s.y-3
+						s.x= s.var2.x
+						s.alpha = s.alpha-20
+						if s.var1<1 then
+							s:kill()
+						end
+					end
+	--==========================================================================
+
+	--TELEPORT ANIMATION========================================================
+	teleportAnim = game:includeSprite('soldier_teleport.png', {16,24})
+	teleportAnim.w = 16
+	teleportAnim.h = 24
+	teleportAnim.cX = 8
+	teleportAnim.cY = 21
+	teleportAnim.alpha = 50
+	teleportAnim.animations = { teleporting = {0,1,2} }
+	teleportAnim.animation = 'teleporting'
+	teleportAnim.imageSpeed = 0.1
+	teleportAnim.onAnimationEnd = function(spr) spr:kill() end
+	--==========================================================================
+	--CRATERMED=================================================================
+	cratermed = game:includeSprite('cratermed.png')
+		--var1: life time
+	cratermed.layer = 1
+	cratermed.var1 = CRATERMED_time
+	cratermed.onUpdate = 	function(spr)
+								spr.var1 = spr.var1 -1
+								if spr.var1<0 then
+									spr:kill()
+								end
+							end
+	cratermed.cX = cratermed.w/2
+	cratermed.cY = cratermed.h/2
+	--==========================================================================
+
+	--TELEPORT MARK=============================================================
+	teleportMark = game:includeSprite('teleport.png')
+		--var1: alert cave
+		--var2: cave state
+		--var3: soldier
+		--var4: cave state initial
+		--var5: time
+	teleportMark.layer = 1
+	teleportMark.cX = 8
+	teleportMark.cY = 6
+	teleportMark.alpha = 100
+	teleportMark.var5 = 5*_SECOND_
+	teleportMark.onDrop = 	function(spr)
+								spr.var1 = battle:spriteNearest(spr, cave)
+								spr.var2 = spr.var1.var1
+								spr.var4 = spr.var2
+							end
+	teleportMark.onUpdate = function(spr)
+								spr.var5 = spr.var5-1
+								if spr.var2==2 and spr.var5<0 and spr.var4==1 and random_integer(0,SOLDIERTELEPORT_mx)>0 then
+									local a = battle:spriteNearest(spr, soldier)
+									if a then
+										if battle:spriteDistance(spr, a)<SOLDIERRAY_creation then
+											createTeleportAnim(spr.var3)
+											spr.var3.xSpeed=0
+											spr.var3.ySpeed=0
+											spr.var3.x = spr.x
+											spr.var3.y = spr.y
+											spr.var3.var4 = SFIRE_loaded
+											spr:kill()
+											spr.var3.var5 = nil
+											return
+										end
+									else
+										createTeleportAnim(spr.var3)
+										spr.var3.xSpeed=0
+										spr.var3.ySpeed=0
+										spr.var3.x = spr.x
+										spr.var3.y = spr.y
+										spr.var3.var4 = SFIRE_loaded
+										spr:kill()
+										spr.var3.var5 = nil
+										return
+									end
+								end
+								spr.var2 = spr.var1.var1
+								if spr.var1.var1==1 then
+									spr.var4 = 1
+								end
+								if spr.var3.killed then
+									spr:kill()
+								end
+							end
+	--==========================================================================
+
+	--SHOOTS====================================================================
+	hshoot = game:includeSprite('hshoot.png', {4,4})
+		--var1: origin
+	hshoot.imageSpeed = 0
+	hshoot.imageIndex = 0
+	hshoot.cY=9
+	hshoot.layer = 801
+	hshoot.onUpdate = function(spr)
+						if spr.xSpeed>0 then
+							spr.imageIndex = 0
+						elseif spr.xSpeed<0 then
+							spr.imageIndex = 1
+						elseif spr.ySpeed<0 then
+							spr.imageIndex = 2
+						elseif spr.ySpeed>0 then
+							spr.imageIndex = 3
+						end
+						spr.layer = spr.y
+					end
+	tshoot = game:includeSprite('tshoot.png', {4,4})
+		--var1: origin
+	tshoot.rSpeed = 0.1
+	tshoot.cY=9
+	tshoot.onUpdate = function(spr) spr.layer = spr.y end
+	tshoot.layer = 801
+	tshoot.imageSpeed =0.02
+	--==========================================================================
+
+	--EXP=======================================================================
+	explosion = game:includeSprite('exp.png')
+		--var1: time life
+	explosion.var1 = 30
+	explosion.w = 2
+	explosion.h = 2
+	explosion.wSpeed = 0.1
+	explosion.hSpeed = 0.1
+	explosion.alpha = 50
+	explosion.layer = 800
+	explosion.cX = 16
+	explosion.cY = 16
+	explosion.onDrop = function() game:playSound('exp.wav') end
+	explosion.onUpdate = 	function(spr)
+								spr.var1 = spr.var1 -1
+								spr.alpha = spr.alpha -2
+								if spr.var1<=1 then
+									spr:kill()
+								end
+							end
+	--==========================================================================
+	alert = game:includeSprite('alerts.png',{7, 8})
+		--var1: follow ...
+	alert.visible = _NO_
+	alert.imageSpeed = 0
+	alert.cX = 4
+	alert.cY = 34
+	alert.layer = 802
+	alert.alpha = 140
+	alert.onUpdate = 	function(spr)
+							if spr.var1 then
+								if not spr.visible then spr.visible = true end
+								if spr.var1.killed then spr:kill() end
+								--player 1 : human
+								if spr.var1.var1 == 3 and spr.var1.var4<0 then
+									spr.imageIndex = 1
+								elseif spr.var1.var1 == 3 and spr.var1.var4>-1 then
+									spr.imageIndex = 0
+								--player 2 : human
+								elseif spr.var1.var1 == 5 and spr.var1.var4<0 then
+									spr.imageIndex = 3
+								elseif spr.var1.var1 == 5 and spr.var1.var4>-1 then
+									spr.imageIndex = 2
+								--player 1 : techyn
+								elseif spr.var1.var1 == 4 and spr.var1.var4<0 then
+									spr.imageIndex = 1
+								elseif spr.var1.var1 == 4 and spr.var1.var4>-1 then
+									spr.imageIndex = 0
+								--player 2 : techyn
+								elseif spr.var1.var1 == 6 and spr.var1.var4<0 then
+									spr.imageIndex = 3
+								elseif spr.var1.var1 == 6 and spr.var1.var4>-1 then
+									spr.imageIndex = 2
+								end
+								spr.x = spr.var1.x
+								spr.y = spr.var1.y
+							end
+						end
+	--==========================================================================
+
+	--==========================================================================
+
+	--DEFAULT SOLDIERS POSITIONS================================================
+	for i=1, #m.positions do
+		if difficulty.current==1 and m.positions[i][4]==0 then
+			createSoldier(m.positions[i][1]*16, m.positions[i][2]*16, m.positions[i][3])
+		elseif difficulty.current==2 and m.positions[i][4]<2 then
+			createSoldier(m.positions[i][1]*16, m.positions[i][2]*16, m.positions[i][3])
+		elseif difficulty.current==3 and m.positions[i][4]<=2 then
+			createSoldier(m.positions[i][1]*16, m.positions[i][2]*16, m.positions[i][3])
+		end
+	end
+	--==========================================================================
+
+	inform('Map Name: '..m.name..'\n\nPlayable Area: '..m.playable..'\n\nAuthor: '..m.author..'\n\nDescription:\n'..m.desc)
+	start = true
+end
+
+function createSpire(sold)
+	battle:dropSprite(spire, sold.x,sold.y-sold.h-1).var2 = sold
+end
+function createNegSpire(sold)
+	battle:dropSprite(negSpire, sold.x,sold.y-sold.h-1).var2 = sold
+end
+function createTeleportAnim(sold)
+	game:playSound('teleport.wav')
+	battle:dropSprite(teleportAnim, sold.x,sold.y).layer = sold.layer
+end
+function createTeleportMark(sold)
+	local s = battle:dropSprite(teleportMark, sold.x,sold.y)
+	s.var3 = sold
+	sold.var5 = s
+end
+function createHShoot(sold, dir)
+	if sold.var3<0 then
+		local s = battle:dropSprite(hshoot,sold.x,sold.y-5)
+		s.var1 = sold
+		if dir==_UP_ then
+			s.ySpeed = -HSHOOT_speed
+		elseif dir==_DN_ then
+			s.ySpeed = HSHOOT_speed
+		elseif dir==_LEFT_ then
+			s.xSpeed = -HSHOOT_speed
+		elseif dir==_RIGHT_ then
+			s.xSpeed = HSHOOT_speed
+		end
+		sold.var3 = FIRE_loaded
+		game:playSound('shoot.wav')
+	end
+end
+function createTShoot(sold, dir)
+	if sold.var3<0 then
+		if random_integer(0, 60)>0 and techyns_number<=TECHYNS_mn and sold.ok==nil then
+			return
+		end
+		if sold.var5==1 then
+			if random_integer(0, SOLDIERTECHYALPHASHOOT)==0 or sold.ok then
+				local s = battle:dropSprite(tshoot,sold.x,sold.y-5)
+				s.var1 = sold
+				if dir==_UP_ then
+					s.ySpeed = -TSHOOT_speed
+				elseif dir==_DN_ then
+					s.ySpeed = TSHOOT_speed
+				elseif dir==_LEFT_ then
+					s.xSpeed = -TSHOOT_speed
+				elseif dir==_RIGHT_ then
+					s.xSpeed = TSHOOT_speed
+				end
+				sold.var3 = FIRE_loaded
+				sold.var5 = 0
+				sold.var4 = SFIRE_loaded
+				game:playSound('laser.wav')
+			end
+		else
+			local s = battle:dropSprite(tshoot,sold.x,sold.y-5)
+			s.var1 = sold
+			if dir==_UP_ then
+				s.ySpeed = -TSHOOT_speed
+			elseif dir==_DN_ then
+				s.ySpeed = TSHOOT_speed
+			elseif dir==_LEFT_ then
+				s.xSpeed = -TSHOOT_speed
+			elseif dir==_RIGHT_ then
+				s.xSpeed = TSHOOT_speed
+			end
+			sold.var3 = FIRE_loaded
+			game:playSound('laser.wav')
+		end
+	end
+end
+function createCratermed(sold)
+	battle:dropSprite(cratermed,sold.x,sold.y)
+end
+--==========================================================================
+
+--RUN=======================================================================
+game:resume()
+main = game:update()
+--==========================================================================
